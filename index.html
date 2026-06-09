@@ -80,6 +80,13 @@
           </div>
         </div>
 
+        <!-- This-month category breakdown -->
+        <div class="section-header">
+          <span class="section-title">This Month</span>
+          <span class="section-badge" id="dash-month-label"></span>
+        </div>
+        <div class="category-breakdown" id="dash-category-breakdown"></div>
+
         <!-- Debt summary row -->
         <div class="debt-summary-row">
           <div class="debt-summary-card orange">
@@ -107,14 +114,62 @@
 
       <!-- TRANSACTIONS TAB -->
       <section id="tab-transactions" class="tab-content">
-        <div class="filter-bar">
-          <select id="txn-filter-month" class="filter-select"></select>
-          <select id="txn-filter-cat" class="filter-select">
-            <option value="">All Categories</option>
-          </select>
+
+        <!-- View toggle: List / Calendar -->
+        <div class="view-toggle-bar">
+          <button class="view-toggle-btn active" data-view="list" id="view-list-btn">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><circle cx="3" cy="6" r="1" fill="currentColor"/><circle cx="3" cy="12" r="1" fill="currentColor"/><circle cx="3" cy="18" r="1" fill="currentColor"/></svg>
+            List
+          </button>
+          <button class="view-toggle-btn" data-view="calendar" id="view-cal-btn">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            Calendar
+          </button>
         </div>
-        <div id="txn-list" class="transaction-list"></div>
-        <div class="empty-state" id="txn-empty">No transactions yet. Tap + to add one.</div>
+
+        <!-- Enhanced Filter Panel -->
+        <div class="filter-panel" id="filter-panel">
+          <div class="filter-search-wrap">
+            <svg class="filter-search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="search" id="txn-search" class="filter-search" placeholder="Search note or category…" autocomplete="off" />
+          </div>
+          <div class="filter-type-pills" id="txn-filter-type">
+            <button class="type-pill active" data-type="">All</button>
+            <button class="type-pill tp-income" data-type="income">↑ Income</button>
+            <button class="type-pill tp-expense" data-type="expense">↓ Expense</button>
+          </div>
+          <div class="filter-selects-row">
+            <select id="txn-filter-month" class="filter-select"></select>
+            <select id="txn-filter-cat" class="filter-select"><option value="">All Categories</option></select>
+            <select id="txn-sort" class="filter-select">
+              <option value="newest">↓ Newest</option>
+              <option value="oldest">↑ Oldest</option>
+              <option value="highest">↓ Highest $</option>
+              <option value="lowest">↑ Lowest $</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- LIST VIEW -->
+        <div id="txn-list-view">
+          <div id="txn-list" class="transaction-list"></div>
+          <div class="empty-state" id="txn-empty">No transactions match your filters.</div>
+        </div>
+
+        <!-- CALENDAR VIEW -->
+        <div id="txn-calendar-view" style="display:none">
+          <div class="cal-nav-bar">
+            <button class="cal-nav-btn" id="cal-prev">&#8249;</button>
+            <div class="cal-month-title" id="cal-month-title"></div>
+            <button class="cal-nav-btn" id="cal-next">&#8250;</button>
+          </div>
+          <div class="cal-weekdays">
+            <span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span>
+          </div>
+          <div class="cal-grid" id="cal-grid"></div>
+          <div class="cal-day-detail" id="cal-day-detail"></div>
+        </div>
+
       </section>
 
       <!-- DEBTS TAB -->
