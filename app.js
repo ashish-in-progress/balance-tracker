@@ -276,12 +276,18 @@ function showToast(msg) {
 // ─────────────────────────────────────────────
 //  STATE
 // ─────────────────────────────────────────────
-let currentTab     = 'dashboard';
-let currentSubtab  = 'i-owe';
-let txnFilterMonth = '';
-let txnFilterCat   = '';
-let confirmCallback = null;
-let fabOpen        = false;
+let currentTab       = 'dashboard';
+let currentSubtab    = 'i-owe';
+let txnFilterMonth   = '';
+let txnFilterCat     = '';
+let txnFilterType    = '';        // '' | 'income' | 'expense'
+let txnSearch        = '';        // live search query
+let txnSort          = 'newest';  // 'newest'|'oldest'|'highest'|'lowest'
+let txnViewMode      = 'list';    // 'list' | 'calendar'
+let calendarMonth    = todayISO().slice(0, 7); // 'YYYY-MM'
+let calendarSelectedDay = '';     // 'YYYY-MM-DD' or ''
+let confirmCallback  = null;
+let fabOpen          = false;
 
 // ─────────────────────────────────────────────
 //  THEME
@@ -491,6 +497,46 @@ function renderDashboard() {
     list.innerHTML = '';
     empty.classList.add('show');
   }
+
+  renderCategoryBreakdown();
+}
+
+// ─────────────────────────────────────────────
+//  TRANSACTIONS VIEW MODE
+// ─────────────────────────────────────────────
+function switchTxnView(mode) {
+  txnViewMode = mode;
+  document.querySelectorAll('.view-toggle-btn').forEach(b =>
+    b.classList.toggle('active', b.dataset.view === mode)
+  );
+  if (mode === 'calendar') {
+    // sync calendar month to current month filter (or today)
+    calendarMonth = txnFilterMonth || todayISO().slice(0, 7);
+    calendarSelectedDay = '';
+  }
+  renderTransactions();
+}
+
+// ─────────────────────────────────────────────
+//  FILTERED TRANSACTIONS HELPER
+// ─────────────────────────────────────────────
+function getFilteredTransactions() {
+  let txns = loadTransactions();
+  if (txnFilterMonth) txns = txns.filter(t => t.date && t.date.startsWith(txnFilterMonth));
+  if (txnFilterCat)   txns = txns.filter(t => t.category === txnFilterCat);
+  if (txnFilterType)  txns = txns.filter(t => t.type === txnFilterType);
+  if (txnSearch) {
+    const q = txnSearch.toLowerCase();
+    txns = txns.filter(t =>
+      (t.note     && t.note.toLowerCase().includes(q)) ||
+      (t.category && t.category.toLowerCase().includes(q))
+    );
+  }
+  if (txnSort === 'oldest')  txns = txns.slice().sort((a, b) => (a.date > b.date ? 1 : a.date < b.date ? -1 : 0));
+  else if (txnSort === 'highest') txns = txns.slice().sort((a, b) => b.amount - a.amount);
+  else if (txnSort === 'lowest')  txns = txns.slice().sort((a, b) => a.amount - b.amount);
+  // 'newest' is default insertion order (unshift)
+  return txns;
 }
 
 // ─────────────────────────────────────────────
@@ -500,10 +546,16 @@ function renderTransactions() {
   populateMonthFilter();
   populateCategoryFilter();
 
-  let txns = loadTransactions();
-  if (txnFilterMonth) txns = txns.filter(t => t.date && t.date.startsWith(txnFilterMonth));
-  if (txnFilterCat)   txns = txns.filter(t => t.category === txnFilterCat);
+  const isCalendar = txnViewMode === 'calendar';
+  document.getElementById('txn-list-view').style.display     = isCalendar ? 'none' : 'block';
+  document.getElementById('txn-calendar-view').style.display = isCalendar ? 'block' : 'none';
 
+  if (isCalendar) {
+    renderCalendar();
+    return;
+  }
+
+  const txns  = getFilteredTransactions();
   const list  = document.getElementById('txn-list');
   const empty = document.getElementById('txn-empty');
 
@@ -514,6 +566,110 @@ function renderTransactions() {
     empty.classList.remove('show');
     list.innerHTML = txns.map(txnHTML).join('');
   }
+}
+
+// ─────────────────────────────────────────────
+//  RENDER: CALENDAR
+// ─────────────────────────────────────────────
+function renderCalendar() {
+  const [year, month] = calendarMonth.split('-').map(Number);
+  const monthDate     = new Date(year, month - 1, 1);
+  document.getElementById('cal-month-title').textContent =
+    monthDate.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+
+  // Build day map for this month
+  const allTxns = loadTransactions();
+  const monthTxns = allTxns.filter(t => t.date && t.date.startsWith(calendarMonth));
+  const dayMap = {};
+  monthTxns.forEach(t => {
+    if (!dayMap[t.date]) dayMap[t.date] = { income: 0, expense: 0, txns: [] };
+    dayMap[t.date].txns.push(t);
+    if (t.type === 'income') dayMap[t.date].income += t.amount;
+    else dayMap[t.date].expense += t.amount;
+  });
+
+  const firstWeekday = new Date(year, month - 1, 1).getDay(); // 0=Sun
+  const daysInMonth  = new Date(year, month, 0).getDate();
+  const todayStr     = todayISO();
+  let html = '';
+
+  // Leading empty cells
+  for (let i = 0; i < firstWeekday; i++) {
+    html += '<div class="cal-cell cal-cell-empty"></div>';
+  }
+
+  for (let d = 1; d <= daysInMonth; d++) {
+    const dateStr = calendarMonth + '-' + String(d).padStart(2, '0');
+    const data    = dayMap[dateStr];
+    const isToday = dateStr === todayStr;
+    const isSel   = dateStr === calendarSelectedDay;
+
+    let dots = '';
+    if (data) {
+      if (data.expense > 0) dots += '<span class="cal-dot cal-dot-expense"></span>';
+      if (data.income  > 0) dots += '<span class="cal-dot cal-dot-income"></span>';
+    }
+
+    const cls = ['cal-cell',
+      isToday ? 'cal-today'    : '',
+      isSel   ? 'cal-selected' : '',
+      data    ? 'cal-has-txn'  : ''
+    ].filter(Boolean).join(' ');
+
+    html += '<div class="' + cls + '" data-date="' + escAttr(dateStr) + '">'
+      + '<span class="cal-day-num">' + d + '</span>'
+      + (data ? '<div class="cal-day-dots">' + dots + '</div>' : '')
+      + (data && data.expense > 0 ? '<div class="cal-day-amt">&minus;' + fmt(data.expense) + '</div>' : '')
+      + '</div>';
+  }
+
+  document.getElementById('cal-grid').innerHTML = html;
+
+  // Day detail
+  const detail = document.getElementById('cal-day-detail');
+  if (calendarSelectedDay && dayMap[calendarSelectedDay]) {
+    const dayTxns = dayMap[calendarSelectedDay].txns;
+    detail.innerHTML =
+      '<div class="cal-detail-header">' + fmtDate(calendarSelectedDay)
+      + ' <span class="cal-detail-count">' + dayTxns.length + ' item' + (dayTxns.length !== 1 ? 's' : '') + '</span></div>'
+      + '<div class="transaction-list">' + dayTxns.map(txnHTML).join('') + '</div>';
+  } else {
+    detail.innerHTML = '';
+  }
+}
+
+// ─────────────────────────────────────────────
+//  RENDER: CATEGORY BREAKDOWN (dashboard)
+// ─────────────────────────────────────────────
+function renderCategoryBreakdown() {
+  const currentMonth = todayISO().slice(0, 7);
+  const label = document.getElementById('dash-month-label');
+  if (label) label.textContent = fmtMonth(currentMonth);
+
+  const txns = loadTransactions().filter(
+    t => t.type === 'expense' && t.date && t.date.startsWith(currentMonth)
+  );
+  const breakdown = {};
+  txns.forEach(t => {
+    breakdown[t.category] = (breakdown[t.category] || 0) + t.amount;
+  });
+  const sorted = Object.entries(breakdown).sort((a, b) => b[1] - a[1]).slice(0, 6);
+  const max = sorted.length ? sorted[0][1] : 0;
+
+  const el = document.getElementById('dash-category-breakdown');
+  if (!el) return;
+  if (sorted.length === 0) {
+    el.innerHTML = '<div class="breakdown-empty">No expenses recorded this month.</div>';
+    return;
+  }
+  el.innerHTML = sorted.map(([cat, amt]) => {
+    const pct = max ? Math.round((amt / max) * 100) : 0;
+    return '<div class="cat-bar-row">'
+      + '<div class="cat-bar-label"><span class="cat-icon">' + getCategoryIcon(cat) + '</span><span class="cat-name">' + escHtml(cat) + '</span></div>'
+      + '<div class="cat-bar-track"><div class="cat-bar-fill" style="width:' + pct + '%"></div></div>'
+      + '<div class="cat-bar-amt">' + fmt(amt) + '</div>'
+      + '</div>';
+  }).join('');
 }
 
 function txnHTML(t) {
@@ -901,6 +1057,60 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   document.getElementById('txn-filter-cat').addEventListener('change', e => {
     txnFilterCat = e.target.value; renderTransactions();
+  });
+
+  // SORT
+  document.getElementById('txn-sort').addEventListener('change', e => {
+    txnSort = e.target.value; renderTransactions();
+  });
+
+  // TYPE FILTER PILLS
+  document.getElementById('txn-filter-type').addEventListener('click', e => {
+    const btn = e.target.closest('.type-pill');
+    if (!btn) return;
+    document.querySelectorAll('#txn-filter-type .type-pill').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    txnFilterType = btn.dataset.type;
+    renderTransactions();
+  });
+
+  // SEARCH (debounced)
+  let searchTimer;
+  document.getElementById('txn-search').addEventListener('input', e => {
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(() => {
+      txnSearch = e.target.value.trim();
+      renderTransactions();
+    }, 220);
+  });
+
+  // VIEW TOGGLE (List / Calendar)
+  document.getElementById('view-list-btn').addEventListener('click', () => switchTxnView('list'));
+  document.getElementById('view-cal-btn').addEventListener('click', () => switchTxnView('calendar'));
+
+  // CALENDAR NAVIGATION
+  document.getElementById('cal-prev').addEventListener('click', () => {
+    const [y, m] = calendarMonth.split('-').map(Number);
+    const prev   = new Date(y, m - 2, 1);
+    calendarMonth = prev.toISOString().slice(0, 7);
+    calendarSelectedDay = '';
+    renderCalendar();
+  });
+  document.getElementById('cal-next').addEventListener('click', () => {
+    const [y, m] = calendarMonth.split('-').map(Number);
+    const next   = new Date(y, m, 1);
+    calendarMonth = next.toISOString().slice(0, 7);
+    calendarSelectedDay = '';
+    renderCalendar();
+  });
+
+  // CALENDAR DAY CLICK (delegated)
+  document.getElementById('cal-grid').addEventListener('click', e => {
+    const cell = e.target.closest('.cal-cell[data-date]');
+    if (!cell) return;
+    const date = cell.dataset.date;
+    calendarSelectedDay = (calendarSelectedDay === date) ? '' : date;
+    renderCalendar();
   });
 
   // DELEGATED: main content area
