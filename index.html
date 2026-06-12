@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#007aff" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Expenses" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <title>Expense Tracker</title>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="icon" href="icon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="icon.svg" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- ===== PIN LOCK SCREEN ===== -->
+  <div id="lock-screen">
+    <div class="lock-card">
+      <div class="lock-logo">💰</div>
+      <h1 class="lock-title">Expense Tracker</h1>
+      <p class="lock-subtitle" id="lock-subtitle">Enter your PIN</p>
+
+      <div class="pin-dots" id="pin-dots">
+        <span class="pin-dot" id="dot-0"></span>
+        <span class="pin-dot" id="dot-1"></span>
+        <span class="pin-dot" id="dot-2"></span>
+        <span class="pin-dot" id="dot-3"></span>
+      </div>
+
+      <div class="pin-error" id="pin-error"></div>
+
+      <div class="pin-keypad">
+        <button class="pin-key" data-digit="1">1</button>
+        <button class="pin-key" data-digit="2">2</button>
+        <button class="pin-key" data-digit="3">3</button>
+        <button class="pin-key" data-digit="4">4</button>
+        <button class="pin-key" data-digit="5">5</button>
+        <button class="pin-key" data-digit="6">6</button>
+        <button class="pin-key" data-digit="7">7</button>
+        <button class="pin-key" data-digit="8">8</button>
+        <button class="pin-key" data-digit="9">9</button>
+        <button class="pin-key pin-key-empty"></button>
+        <button class="pin-key" data-digit="0">0</button>
+        <button class="pin-key pin-key-del" id="pin-del">⌫</button>
+      </div>
+
+      <div id="lock-setup-hint" class="lock-hint" style="display:none">
+        Choose a 4-digit PIN to secure your data
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== APP (hidden until unlocked) ===== -->
+  <div id="app-shell" hidden>
+
+    <!-- TOP HEADER -->
+    <header class="app-header">
+      <div class="header-left">
+        <span class="app-logo">💰</span>
+        <span class="app-title" id="headerTitle">Dashboard</span>
+      </div>
+      <div class="header-right">
+        <button class="icon-btn" id="themeToggle" title="Toggle theme">🌙</button>
+        <button class="icon-btn" id="lockBtn" title="Lock app">🔒</button>
+      </div>
+    </header>
+
+    <!-- MAIN CONTENT -->
+    <main class="app-main">
+
+      <!-- DASHBOARD TAB -->
+      <section id="tab-dashboard" class="tab-content active">
+        <!-- Hero balance card -->
+        <div class="hero-card">
+          <div class="hero-label">Net Balance</div>
+          <div class="hero-value" id="dash-balance">₹0.00</div>
+          <div class="hero-sub">
+            <span class="hero-pill green"><svg width="10" height="10" viewBox="0 0 10 10"><path d="M5 1v8M2 4l3-3 3 3" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg> <span id="dash-income">₹0</span></span>
+            <span class="hero-pill red"><svg width="10" height="10" viewBox="0 0 10 10"><path d="M5 1v8M2 6l3 3 3-3" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg> <span id="dash-expense">₹0</span></span>
+          </div>
+        </div>
+
+        <!-- This-month category breakdown -->
+        <div class="section-header">
+          <span class="section-title">This Month</span>
+          <span class="section-badge" id="dash-month-label"></span>
+        </div>
+        <div class="category-breakdown" id="dash-category-breakdown"></div>
+
+        <!-- Debt summary row -->
+        <div class="debt-summary-row">
+          <div class="debt-summary-card orange">
+            <div class="ds-icon">↑</div>
+            <div class="ds-info">
+              <div class="ds-label">I Owe</div>
+              <div class="ds-value" id="dash-i-owe">₹0</div>
+            </div>
+          </div>
+          <div class="debt-summary-card teal">
+            <div class="ds-icon">↓</div>
+            <div class="ds-info">
+              <div class="ds-label">They Owe Me</div>
+              <div class="ds-value" id="dash-they-owe">₹0</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="section-header">
+          <span class="section-title">Recent Transactions</span>
+        </div>
+        <div id="dash-recent-list" class="transaction-list"></div>
+        <div class="empty-state" id="dash-empty">No transactions yet. Tap + to add one.</div>
+      </section>
+
+      <!-- TRANSACTIONS TAB -->
+      <section id="tab-transactions" class="tab-content">
+
+        <!-- View toggle: List / Calendar -->
+        <div class="view-toggle-bar">
+          <button class="view-toggle-btn active" data-view="list" id="view-list-btn">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><circle cx="3" cy="6" r="1" fill="currentColor"/><circle cx="3" cy="12" r="1" fill="currentColor"/><circle cx="3" cy="18" r="1" fill="currentColor"/></svg>
+            List
+          </button>
+          <button class="view-toggle-btn" data-view="calendar" id="view-cal-btn">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            Calendar
+          </button>
+        </div>
+
+        <!-- Enhanced Filter Panel -->
+        <div class="filter-panel" id="filter-panel">
+          <div class="filter-search-wrap">
+            <svg class="filter-search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="search" id="txn-search" class="filter-search" placeholder="Search note or category…" autocomplete="off" />
+          </div>
+          <div class="filter-type-pills" id="txn-filter-type">
+            <button class="type-pill active" data-type="">All</button>
+            <button class="type-pill tp-income" data-type="income">↑ Income</button>
+            <button class="type-pill tp-expense" data-type="expense">↓ Expense</button>
+          </div>
+          <div class="filter-selects-row">
+            <select id="txn-filter-month" class="filter-select"></select>
+            <select id="txn-filter-cat" class="filter-select"><option value="">All Categories</option></select>
+            <select id="txn-sort" class="filter-select">
+              <option value="newest">↓ Newest</option>
+              <option value="oldest">↑ Oldest</option>
+              <option value="highest">↓ Highest $</option>
+              <option value="lowest">↑ Lowest $</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- LIST VIEW -->
+        <div id="txn-list-view">
+          <div id="txn-list" class="transaction-list"></div>
+          <div class="empty-state" id="txn-empty">No transactions match your filters.</div>
+        </div>
+
+        <!-- CALENDAR VIEW -->
+        <div id="txn-calendar-view" style="display:none">
+          <div class="cal-nav-bar">
+            <button class="cal-nav-btn" id="cal-prev">&#8249;</button>
+            <div class="cal-month-title" id="cal-month-title"></div>
+            <button class="cal-nav-btn" id="cal-next">&#8250;</button>
+          </div>
+          <div class="cal-weekdays">
+            <span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span>
+          </div>
+          <div class="cal-grid" id="cal-grid"></div>
+          <div class="cal-day-detail" id="cal-day-detail"></div>
+        </div>
+
+      </section>
+
+      <!-- DEBTS TAB -->
+      <section id="tab-debts" class="tab-content">
+        <div class="debt-subtabs">
+          <button class="subtab-btn active" data-subtab="i-owe">I Owe</button>
+          <button class="subtab-btn" data-subtab="they-owe">They Owe Me</button>
+          <button class="subtab-btn" data-subtab="cleared">Cleared</button>
+        </div>
+
+        <div id="subtab-i-owe" class="subtab-content active">
+          <div id="i-owe-list" class="debt-person-list"></div>
+          <div class="empty-state" id="i-owe-empty">No active debts where you owe someone.</div>
+        </div>
+        <div id="subtab-they-owe" class="subtab-content">
+          <div id="they-owe-list" class="debt-person-list"></div>
+          <div class="empty-state" id="they-owe-empty">No one owes you money right now.</div>
+        </div>
+        <div id="subtab-cleared" class="subtab-content">
+          <div id="cleared-list" class="debt-person-list"></div>
+          <div class="empty-state" id="cleared-empty">No cleared debts yet.</div>
+        </div>
+      </section>
+
+      <!-- SAVINGS & INVESTMENTS TAB -->
+      <section id="tab-savings" class="tab-content">
+        <div class="debt-subtabs" id="savings-subtabs-bar">
+          <button class="savings-subtab-btn active" data-stab="sips">📈 SIPs</button>
+          <button class="savings-subtab-btn" data-stab="insurance">🛡️ Insurance</button>
+        </div>
+
+        <div id="stab-sips" class="savings-subtab-content active">
+          <div id="sip-list" class="invest-list"></div>
+          <div class="empty-state" id="sip-empty">No SIPs yet. Tap + to add one.</div>
+        </div>
+
+        <div id="stab-insurance" class="savings-subtab-content">
+          <div id="insurance-list" class="invest-list"></div>
+          <div class="empty-state" id="insurance-empty">No insurance policies yet. Tap + to add one.</div>
+        </div>
+      </section>
+
+      <!-- SETTINGS TAB -->
+      <section id="tab-settings" class="tab-content">
+
+        <div class="settings-group">
+          <div class="settings-title">👤 People</div>
+          <div id="persons-list" class="persons-list"></div>
+          <div class="add-row">
+            <input type="text" id="new-person-input" class="settings-input" placeholder="Add a person's name" maxlength="60" />
+            <button class="btn-secondary" id="add-person-btn">Add</button>
+          </div>
+        </div>
+
+        <div class="settings-group">
+          <div class="settings-title">💱 Currency</div>
+          <div class="inline-row">
+            <input type="text" id="currency-symbol" class="settings-input" maxlength="5" placeholder="₹" />
+            <button class="btn-secondary" id="save-currency">Save</button>
+          </div>
+        </div>
+
+        <div class="settings-group">
+          <div class="settings-title">🏷️ Categories</div>
+          <div id="category-list" class="category-chip-list"></div>
+          <div class="add-row">
+            <input type="text" id="new-category-input" class="settings-input" placeholder="New category name" />
+            <button class="btn-secondary" id="add-category-btn">Add</button>
+          </div>
+        </div>
+
+        <div class="settings-group">
+          <div class="settings-title">🔒 Security</div>
+          <button class="btn-secondary full-btn" id="change-pin-btn">Change PIN</button>
+        </div>
+
+        <div class="settings-group danger-zone">
+          <div class="settings-title">⚠️ Data</div>
+          <button class="btn-secondary full-btn" id="export-btn">📤 Export JSON Backup</button>
+          <button class="btn-danger full-btn" id="clear-all-btn">🗑️ Clear All Data</button>
+        </div>
+
+      </section>
+
+    </main>
+
+    <!-- BOTTOM NAV -->
+    <nav class="bottom-nav">
+      <button class="nav-btn active" data-tab="dashboard">
+        <svg class="nav-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+        <span class="nav-label">Dashboard</span>
+      </button>
+      <button class="nav-btn" data-tab="transactions">
+        <svg class="nav-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>
+        <span class="nav-label">Transactions</span>
+      </button>
+      <button class="nav-btn" data-tab="debts">
+        <svg class="nav-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        <span class="nav-label">Debts</span>
+      </button>
+      <button class="nav-btn" data-tab="savings">
+        <svg class="nav-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
+        <span class="nav-label">Savings</span>
+      </button>
+      <button class="nav-btn" data-tab="settings">
+        <svg class="nav-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        <span class="nav-label">Settings</span>
+      </button>
+    </nav>
+
+    <!-- FAB -->
+    <button class="fab" id="fab-btn" title="Add">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+    </button>
+    <div class="fab-menu" id="fab-menu">
+      <button class="fab-option" id="fab-add-txn">
+        <span class="fab-opt-icon">💳</span> Add Transaction
+      </button>
+      <button class="fab-option" id="fab-add-debt">
+        <span class="fab-opt-icon">🤝</span> Add Debt / Lending
+      </button>
+      <button class="fab-option" id="fab-add-sip" style="display:none">
+        <span class="fab-opt-icon">📈</span> Add SIP
+      </button>
+      <button class="fab-option" id="fab-add-insurance" style="display:none">
+        <span class="fab-opt-icon">🛡️</span> Add Insurance
+      </button>
+    </div>
+
+    <!-- MODAL: ADD TRANSACTION -->
+    <div class="modal-overlay" id="modal-txn">
+      <div class="modal-sheet">
+        <div class="modal-handle"></div>
+        <div class="modal-title">Add Transaction</div>
+
+        <div class="toggle-group" id="txn-type-toggle">
+          <button class="toggle-btn active" data-val="expense">
+            <span class="tgl-icon">↑</span> Expense
+          </button>
+          <button class="toggle-btn" data-val="income">
+            <span class="tgl-icon">↓</span> Income
+          </button>
+        </div>
+
+        <label class="field-label">Amount</label>
+        <div class="amount-field-wrap">
+          <span class="amount-currency" id="txn-currency-sym">₹</span>
+          <input type="number" id="txn-amount" class="field-input amount-input" placeholder="0.00" min="0" step="0.01" inputmode="decimal" />
+        </div>
+
+        <label class="field-label">Category</label>
+        <select id="txn-category" class="field-input"></select>
+
+        <label class="field-label">Note</label>
+        <input type="text" id="txn-note" class="field-input" placeholder="Optional note" maxlength="100" />
+
+        <label class="field-label">Date</label>
+        <input type="date" id="txn-date" class="field-input" />
+
+        <div class="modal-actions">
+          <button class="btn-ghost" id="txn-cancel">Cancel</button>
+          <button class="btn-primary" id="txn-save">Save</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL: ADD DEBT -->
+    <div class="modal-overlay" id="modal-debt">
+      <div class="modal-sheet">
+        <div class="modal-handle"></div>
+        <div class="modal-title">Add Debt / Lending</div>
+
+        <div class="toggle-group" id="debt-dir-toggle">
+          <button class="toggle-btn active" data-val="i-owe">
+            <span class="tgl-icon">↑</span> They paid for me
+          </button>
+          <button class="toggle-btn" data-val="they-owe">
+            <span class="tgl-icon">↓</span> I paid for them
+          </button>
+        </div>
+
+        <label class="field-label">Person</label>
+        <div class="person-picker-wrap">
+          <div class="person-chips-scroll" id="debt-person-chips"></div>
+          <input type="text" id="debt-person" class="field-input" placeholder="Or type a name…" maxlength="60" autocomplete="off" />
+        </div>
+
+        <label class="field-label">Amount</label>
+        <div class="amount-field-wrap">
+          <span class="amount-currency" id="debt-currency-sym">₹</span>
+          <input type="number" id="debt-amount" class="field-input amount-input" placeholder="0.00" min="0" step="0.01" inputmode="decimal" />
+        </div>
+
+        <label class="field-label">Note</label>
+        <input type="text" id="debt-note" class="field-input" placeholder="What was it for?" maxlength="100" />
+
+        <label class="field-label">Date</label>
+        <input type="date" id="debt-date" class="field-input" />
+
+        <div class="modal-actions">
+          <button class="btn-ghost" id="debt-cancel">Cancel</button>
+          <button class="btn-primary" id="debt-save">Save</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL: CONFIRM -->
+    <div class="modal-overlay" id="modal-confirm">
+      <div class="modal-sheet confirm-sheet">
+        <div class="modal-title" id="confirm-title">Are you sure?</div>
+        <div class="confirm-msg" id="confirm-msg"></div>
+        <div class="modal-actions">
+          <button class="btn-ghost" id="confirm-cancel">Cancel</button>
+          <button class="btn-danger" id="confirm-ok">Confirm</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL: ADD SIP -->
+    <div class="modal-overlay" id="modal-sip">
+      <div class="modal-sheet">
+        <div class="modal-handle"></div>
+        <div class="modal-title">Add SIP</div>
+
+        <label class="field-label">Fund / SIP Name</label>
+        <input type="text" id="sip-name" class="field-input" placeholder="e.g. Axis Bluechip Fund" maxlength="80" />
+
+        <label class="field-label">Amount</label>
+        <div class="amount-field-wrap">
+          <span class="amount-currency" id="sip-currency-sym">₹</span>
+          <input type="number" id="sip-amount" class="field-input amount-input" placeholder="0.00" min="0" step="0.01" inputmode="decimal" />
+        </div>
+
+        <label class="field-label">Frequency</label>
+        <select id="sip-frequency" class="field-input">
+          <option value="daily">Daily</option>
+          <option value="weekly">Weekly</option>
+          <option value="monthly" selected>Monthly</option>
+        </select>
+
+        <label class="field-label">Start Date</label>
+        <input type="date" id="sip-start-date" class="field-input" />
+
+        <label class="field-label">Note (optional)</label>
+        <input type="text" id="sip-note" class="field-input" placeholder="e.g. Retirement fund" maxlength="100" />
+
+        <div class="modal-actions">
+          <button class="btn-ghost" id="sip-cancel">Cancel</button>
+          <button class="btn-primary" id="sip-save">Save SIP</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL: ADD INSURANCE -->
+    <div class="modal-overlay" id="modal-insurance">
+      <div class="modal-sheet">
+        <div class="modal-handle"></div>
+        <div class="modal-title">Add Insurance Policy</div>
+
+        <label class="field-label">Policy / Plan Name</label>
+        <input type="text" id="ins-name" class="field-input" placeholder="e.g. LIC Tech Term" maxlength="80" />
+
+        <label class="field-label">Insurer</label>
+        <input type="text" id="ins-insurer" class="field-input" placeholder="e.g. LIC, HDFC Life, Max Life…" maxlength="60" />
+
+        <label class="field-label">Type</label>
+        <select id="ins-type" class="field-input">
+          <option value="term">Term Life</option>
+          <option value="health">Health</option>
+          <option value="vehicle">Vehicle</option>
+          <option value="other">Other</option>
+        </select>
+
+        <label class="field-label">Sum Assured (Coverage)</label>
+        <div class="amount-field-wrap">
+          <span class="amount-currency" id="ins-csym1">₹</span>
+          <input type="number" id="ins-sum-assured" class="field-input amount-input" placeholder="e.g. 5000000" min="0" step="1" inputmode="numeric" />
+        </div>
+
+        <label class="field-label">Premium Amount</label>
+        <div class="amount-field-wrap">
+          <span class="amount-currency" id="ins-csym2">₹</span>
+          <input type="number" id="ins-premium" class="field-input amount-input" placeholder="0.00" min="0" step="0.01" inputmode="decimal" />
+        </div>
+
+        <label class="field-label">Premium Frequency</label>
+        <select id="ins-frequency" class="field-input">
+          <option value="monthly">Monthly</option>
+          <option value="quarterly">Quarterly</option>
+          <option value="half-yearly">Half-Yearly</option>
+          <option value="yearly" selected>Yearly</option>
+        </select>
+
+        <label class="field-label">Policy Start Date</label>
+        <input type="date" id="ins-start-date" class="field-input" />
+
+        <label class="field-label">Premium Payment Until (optional)</label>
+        <input type="date" id="ins-payment-end" class="field-input" />
+
+        <label class="field-label">Coverage End Date (optional)</label>
+        <input type="date" id="ins-end-date" class="field-input" />
+
+        <div class="modal-actions">
+          <button class="btn-ghost" id="ins-cancel">Cancel</button>
+          <button class="btn-primary" id="ins-save">Save Policy</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL: LOG SIP PAYMENT -->
+    <div class="modal-overlay" id="modal-sip-log">
+      <div class="modal-sheet">
+        <div class="modal-handle"></div>
+        <div class="modal-title">Log SIP Payment</div>
+        <div class="sip-log-sub" id="sip-log-sub"></div>
+        <input type="hidden" id="sip-log-id" />
+
+        <label class="field-label">Amount</label>
+        <div class="amount-field-wrap">
+          <span class="amount-currency" id="sip-log-csym">₹</span>
+          <input type="number" id="sip-log-amount" class="field-input amount-input" placeholder="0.00" min="0" step="0.01" inputmode="decimal" />
+        </div>
+
+        <label class="field-label">Date</label>
+        <input type="date" id="sip-log-date" class="field-input" />
+
+        <label class="field-label">Note (optional)</label>
+        <input type="text" id="sip-log-note" class="field-input" placeholder="Optional note" maxlength="100" />
+
+        <div class="modal-actions">
+          <button class="btn-ghost" id="sip-log-cancel">Cancel</button>
+          <button class="btn-primary" id="sip-log-save">Log Payment</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL: LOG INSURANCE PREMIUM -->
+    <div class="modal-overlay" id="modal-ins-log">
+      <div class="modal-sheet">
+        <div class="modal-handle"></div>
+        <div class="modal-title">Log Premium Payment</div>
+        <div class="sip-log-sub" id="ins-log-sub"></div>
+        <input type="hidden" id="ins-log-id" />
+
+        <label class="field-label">Amount</label>
+        <div class="amount-field-wrap">
+          <span class="amount-currency" id="ins-log-csym">₹</span>
+          <input type="number" id="ins-log-amount" class="field-input amount-input" placeholder="0.00" min="0" step="0.01" inputmode="decimal" />
+        </div>
+
+        <label class="field-label">Date</label>
+        <input type="date" id="ins-log-date" class="field-input" />
+
+        <label class="field-label">Note (optional)</label>
+        <input type="text" id="ins-log-note" class="field-input" placeholder="Optional note" maxlength="100" />
+
+        <div class="modal-actions">
+          <button class="btn-ghost" id="ins-log-cancel">Cancel</button>
+          <button class="btn-primary" id="ins-log-save">Log Premium</button>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- end #app-shell -->
+
+  <script src="app.js"></script>
+  <script>
+    // Register Service Worker for offline & PWA install
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js')
+          .catch(() => { /* SW not supported in this context */ });
+      });
+    }
+  </script>
+</body>
+</html>
