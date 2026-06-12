@@ -1301,6 +1301,45 @@ function getToggleVal(groupId) {
 // ─────────────────────────────────────────────
 //  EXPORT
 // ─────────────────────────────────────────────
+function importData(file) {
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const d = JSON.parse(e.target.result);
+      // Validate it looks like our backup
+      if (!d.transactions && !d.debts && !d.sips && !d.policies) {
+        showToast('Invalid backup file.'); return;
+      }
+      openConfirm(
+        'Import Backup',
+        'This will replace ALL current data with the backup. Are you sure?',
+        () => {
+          if (Array.isArray(d.transactions))  DB.set('transactions',  d.transactions);
+          if (Array.isArray(d.debts))         DB.set('debts',         d.debts);
+          if (Array.isArray(d.settlements))   DB.set('settlements',   d.settlements);
+          if (Array.isArray(d.categories))    DB.set('categories',    d.categories);
+          if (Array.isArray(d.persons))       DB.set('persons',       d.persons);
+          if (Array.isArray(d.sips))          DB.set('sips',          d.sips);
+          if (Array.isArray(d.sipPayments))   DB.set('sipPayments',   d.sipPayments);
+          if (Array.isArray(d.policies))      DB.set('policies',      d.policies);
+          if (Array.isArray(d.insPayments))   DB.set('insPayments',   d.insPayments);
+          CURRENCY = loadCurrency();
+          renderDashboard();
+          renderSettings();
+          if (currentTab === 'transactions') renderTransactions();
+          if (currentTab === 'debts')        renderDebts();
+          if (currentTab === 'savings')      renderSavings();
+          showToast('Backup imported successfully!');
+        }
+      );
+    } catch {
+      showToast('Could not read file — is it a valid JSON backup?');
+    }
+  };
+  reader.readAsText(file);
+}
+
 function exportData() {
   const data = {
     exportedAt:   new Date().toISOString(),
@@ -1677,6 +1716,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // SETTINGS: export
   document.getElementById('export-btn').addEventListener('click', exportData);
+  document.getElementById('import-btn').addEventListener('click', () => {
+    document.getElementById('import-file-input').value = '';
+    document.getElementById('import-file-input').click();
+  });
+  document.getElementById('import-file-input').addEventListener('change', e => {
+    importData(e.target.files[0]);
+  });
 
   // SETTINGS: clear all
   document.getElementById('clear-all-btn').addEventListener('click', () => {
